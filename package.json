@@ -1,0 +1,17 @@
+{
+  "name": "ai-chat-backend-rtdb",
+  "version": "1.0.0",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.5.0",
+    "uuid": "^9.0.1"
+  }
+}

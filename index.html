@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Basic Web Chat</title>
+  <style>
+    :root { --bg:#0b1020; --panel:#10172a; --panel-2:#0f1729; --text:#e7eaf3; --muted:#9aa4c0; --accent:#4f8cff; --accent-2:#7aa2ff; --me:#2b5cff; --me-2:#1f46c4; --them:#1e293b; --ring:rgba(79,140,255,.55); --danger:#ef4444; }
+    [data-theme="light"] { --bg:#f6f7fb; --panel:#fff; --panel-2:#f2f4f8; --text:#0f172a; --muted:#4b5563; --accent:#2563eb; --accent-2:#3b82f6; --me:#2563eb; --me-2:#1e40af; --them:#e5e7eb; --ring:rgba(37,99,235,.35); --danger:#dc2626; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:radial-gradient(60rem 60rem at 110% -10%,rgba(79,140,255,.12),transparent),radial-gradient(60rem 60rem at -10% 110%,rgba(79,140,255,.12),transparent),var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";display:grid;place-items:center;padding:24px}
+    .app{width:min(1200px,100%);height:min(860px,calc(100vh - 48px));background:linear-gradient(180deg,var(--panel-2),var(--panel));border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.04);display:grid;grid-template-rows:auto 1fr auto;border:1px solid rgba(255,255,255,.06);overflow:hidden}
+    .topbar{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))}
+    .status-dot{width:10px;height:10px;border-radius:999px;background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.25)}
+    .status-dot.on{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.25)}
+    .title{font-weight:700;letter-spacing:.2px}.spacer{flex:1}
+    .field{display:inline-flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:12px}
+    .field input{background:transparent;border:none;outline:none;color:var(--text);min-width:120px}
+    .btn{appearance:none;border:1px solid rgba(255,255,255,.08);background:var(--panel-2);color:var(--text);padding:8px 12px;border-radius:12px;cursor:pointer;transition:transform .04s ease,box-shadow .2s ease,background .2s ease}
+    .btn:hover{box-shadow:0 0 0 4px var(--ring)} .btn:active{transform:translateY(1px)}
+    .btn-danger{border-color:rgba(239,68,68,.45);color:#fff;background:linear-gradient(180deg,var(--danger),#7f1d1d)}
+    .main{display:grid;grid-template-columns:280px 1fr;height:100%}
+    .sidebar{border-right:1px solid rgba(255,255,255,.08);display:grid;grid-template-rows:auto 1fr auto;background:linear-gradient(180deg,rgba(0,0,0,.06),rgba(0,0,0,0))}
+    .side-top{padding:10px;display:flex;gap:8px}
+    .side-list{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+    .item{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .item:hover{box-shadow:0 0 0 3px var(--ring)}
+    .item.active{outline:2px solid var(--accent);box-shadow:0 0 0 3px var(--ring)}
+    .item-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .side-bottom{padding:10px;display:flex;gap:8px}
+    .chat{position:relative;overflow:hidden;display:grid;grid-template-rows:auto 1fr}
+    .system-banner{font-size:12px;color:var(--muted);padding:10px 16px;border-bottom:1px dashed rgba(255,255,255,.08);display:flex;gap:10px;align-items:center}
+    .log{overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth;background:radial-gradient(40rem 25rem at 120% 0%,rgba(79,140,255,.08),transparent),radial-gradient(40rem 25rem at 0% 120%,rgba(79,140,255,.08),transparent)}
+    .day-divider{text-align:center;color:var(--muted);font-size:12px;margin:10px 0}
+    .msg{display:grid;grid-template-columns:1fr;gap:6px;max-width:72ch}
+    .row{display:flex;gap:10px;align-items:flex-end}
+    .bubble{padding:10px 12px;border-radius:16px;line-height:1.35;word-wrap:break-word;white-space:pre-wrap;border:1px solid rgba(255,255,255,.08)}
+    .meta{font-size:11px;color:var(--muted)}
+    .me{margin-left:auto;align-items:flex-end}.me .bubble{background:linear-gradient(180deg,var(--me),var(--me-2));color:#fff}
+    .them{margin-right:auto;align-items:flex-start}.them .bubble{background:var(--them)}
+    .composer{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px;border-top:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.00),rgba(0,0,0,.05))}
+    .input{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:var(--panel-2);border:1px solid rgba(255,255,255,.08)}
+    .input textarea{flex:1;min-height:42px;max-height:160px;resize:vertical;background:transparent;border:none;outline:none;color:var(--text);font:inherit;line-height:1.35;padding:6px 2px}
+    .send{display:flex;gap:8px;align-items:center}
+    .hint{color:var(--muted);font-size:12px}
+    @media (max-width:900px){.main{grid-template-columns:1fr}.sidebar{display:none}}
+  </style>
+  <style id="chat-overlap-fix">
+  /* Ensure the overall grid reserves a real row for the input bar */
+  .app {
+    grid-template-rows: auto 1fr auto;  /* header | main | composer */
+    height: 100vh;
+  }
+
+  /* If you have a middle wrapper (e.g., .main), let it shrink */
+  .main { min-height: 0; }
+
+  /* Chat panel = banner + scrollable log; allow shrinking so scrolling works */
+  .chat {
+    display: grid;
+    grid-template-rows: auto 1fr;  /* system-banner | log */
+    min-height: 0;                 /* <- crucial so .log can get overflow */
+  }
+
+  /* Make messages area scroll and show a scrollbar */
+  .log {
+    overflow-y: auto;
+    min-height: 0;                 /* allow it to shrink within the grid */
+    /* Optional scrollbar cosmetics */
+    scrollbar-width: thin;         /* Firefox */
+    scrollbar-color: var(--accent-2) transparent;
+  }
+  .log::-webkit-scrollbar { width: 10px; }            /* Chrome/Safari/Edge */
+  .log::-webkit-scrollbar-thumb { background: var(--accent-2); border-radius: 8px; }
+  .log::-webkit-scrollbar-track { background: var(--panel-2); }
+
+  /* Keep the input in its own row; remove sticky/fixed so it doesn't overlay */
+  .composer {
+    position: static;   /* ensure it's part of the third grid row */
+    z-index: 0;
+  }
+</style>
+
+</head>
+<body>
+  <div class="app" id="app" data-theme="dark">
+    <div class="topbar">
+      <div class="status-dot" id="statusDot" title="Signed out"></div>
+      <div class="title">Basic Web Chat</div>
+      <div class="spacer"></div>
+      <div class="field" title="Your display name">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5m0 2c-4.418 0-8 2.239-8 5v1h16v-1c0-2.761-3.582-5-8-5" stroke="currentColor" stroke-width="2"/></svg>
+        <input id="name" type="text" value="You" maxlength="32" />
+      </div>
+      <button class="btn" id="renameBtn" title="Rename conversation">Rename Chat</button>
+      <div class="toolbar">
+        <button class="btn" id="themeBtn" title="Toggle theme">Theme</button>
+        <button class="btn" id="signInBtn">Sign in</button>
+        <button class="btn" id="signOutBtn" style="display:none">Sign out</button>
+      </div>
+    </div>
+
+    <div class="main">
+      <!-- Sidebar: sessions -->
+      <aside class="sidebar">
+        <div class="side-top">
+          <button class="btn" id="newBtn">New chat</button>
+          <button class="btn btn-danger" id="deleteBtn" title="Delete current">Delete</button>
+        </div>
+        <div class="side-list" id="sessions"></div>
+        <div class="side-bottom">
+          <div class="hint">Signed-in chats are synced per user.</div>
+        </div>
+      </aside>
+
+      <!-- Chat area -->
+      <div class="chat">
+        <div class="system-banner">
+          <span>🔐 Sign in with Google to sync with the server. Your chats are per-user in Firebase.</span>
+          <span class="spacer"></span>
+          <span class="hint">Enter to send • Shift+Enter for newline</span>
+        </div>
+        <div class="log" id="log" aria-live="polite" aria-relevant="additions"></div>
+      </div>
+    </div>
+
+    <form class="composer" id="form" autocomplete="off">
+      <div class="input"><textarea id="text" placeholder="Type a message…" required></textarea></div>
+      <div class="send"><button class="btn" type="submit">Send</button></div>
+    </form>
+  </div>
+
+  <!-- Firebase client SDKs (compat builds) -->
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+
+<script>
+    // === Your project's config (must match your Firebase Console exactly) ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2rnmhGiYpkTA-Vg3XKSsr8wUISYvGwKM",
+      authDomain: "project1-fd9a3.firebaseapp.com",
+      databaseURL: "https://project1-fd9a3-default-rtdb.firebaseio.com",
+      projectId: "project1-fd9a3",
+      //storageBucket: "project1-fd9a3.appspot.com",
+      //messagingSenderId: "688914504068",
+      appId: "1:688914504068:web:485a9d255e9986add625d1"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <script>
+    // ===== Elements / utils =====
+    const $$ = s => document.querySelector(s);
+    const logEl=$$('#log'), formEl=$$('#form'), textEl=$$('#text'), nameEl=$$('#name'), appEl=$$('#app'), dotEl=$$('#statusDot');
+    const sessionsEl=$$('#sessions'), newBtn=$$('#newBtn'), deleteBtn=$$('#deleteBtn'), renameBtn=$$('#renameBtn');
+    const escapeHTML = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    const fmtTime = ts => new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const todayKey = d => new Date(d).toDateString();
+
+    // Theme toggle
+    const THEME_KEY='basic-web-chat:theme';
+    appEl.setAttribute('data-theme', localStorage.getItem(THEME_KEY)||'dark');
+    $$('#themeBtn').onclick=()=>{const n=appEl.getAttribute('data-theme')==='dark'?'light':'dark';appEl.setAttribute('data-theme',n);localStorage.setItem(THEME_KEY,n);};
+
+    // Rendering
+    let renderBuffer=[];
+    function renderAll(){ logEl.innerHTML=''; let last=''; for(const m of renderBuffer){ if(todayKey(m.ts)!==last){ last=todayKey(m.ts); const d=document.createElement('div'); d.className='day-divider'; d.textContent=last; logEl.appendChild(d);} appendMessage(m,false);} scrollToBottom(true); }
+    function appendMessage(m,toBottom=true){
+      const row=document.createElement('div'); row.className='row '+(m.user===(nameEl.value||'You')?'me':'them');
+      const msg=document.createElement('div'); msg.className='msg';
+      const bubble=document.createElement('div'); bubble.className='bubble'; bubble.innerHTML=escapeHTML(m.text);
+      const meta=document.createElement('div'); meta.className='meta'; meta.textContent=`${m.user} • ${fmtTime(m.ts)}`;
+      msg.appendChild(bubble); msg.appendChild(meta); row.appendChild(msg); logEl.appendChild(row);
+      if(toBottom) scrollToBottom();
+    }
+    function scrollToBottom(force=false){ const near=force||(logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 120); if(near) logEl.scrollTop=logEl.scrollHeight; }
+
+    // ===== API (same-origin) =====
+    const apiBase=''; // same origin -> /api/...
+    let idToken=null, currentSessionId=null, currentSessions=[];
+
+    async function getFreshToken(){
+      const user = firebase.auth().currentUser;
+      if(!user) return null;
+      idToken = await user.getIdToken(true);
+      return idToken;
+    }
+
+    async function api(path, options={}){
+      if(!idToken) await getFreshToken();
+      const res = await fetch(`${apiBase}${path}`, {
+        ...options,
+        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${idToken}`, ...(options.headers||{}) }
+      });
+      const data = await res.json().catch(()=> ({}));
+      if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    // ===== Sessions =====
+    function renderSessions(){
+      sessionsEl.innerHTML='';
+      for(const s of currentSessions){
+        const el=document.createElement('div');
+        el.className='item'+(s.id===currentSessionId?' active':'');
+        el.title = new Date(s.updatedAt || s.createdAt || Date.now()).toLocaleString();
+        const dot = document.createElement('div'); dot.style.width='8px'; dot.style.height='8px'; dot.style.borderRadius='999px'; dot.style.background='var(--accent)';
+        const title=document.createElement('div'); title.className='item-title'; title.textContent=s.title || 'Untitled';
+        el.appendChild(dot); el.appendChild(title);
+        el.onclick=()=>selectSession(s.id);
+        sessionsEl.appendChild(el);
+      }
+    }
+
+    async function refreshSessions(autoSelect=true){
+      const list = await api('/api/sessions');
+      currentSessions = list;
+      if(autoSelect){
+        if(!currentSessionId && currentSessions.length) currentSessionId = currentSessions[0].id;
+      }
+      renderSessions();
+    }
+
+    async function ensureDefaultSession(){
+      await refreshSessions();
+      if(currentSessionId) return currentSessionId;
+      const created = await api('/api/sessions', { method:'POST', body: JSON.stringify({ title:'My Chat' }) });
+      currentSessionId = created.id;
+      await refreshSessions(false);
+      return currentSessionId;
+    }
+
+    async function selectSession(id){
+      currentSessionId = id;
+      renderSessions();
+      await loadMessages();
+    }
+
+    async function createSession(){
+      const title = prompt('Title for new chat?', 'New chat') || 'New chat';
+      const created = await api('/api/sessions', { method:'POST', body: JSON.stringify({ title }) });
+      currentSessionId = created.id;
+      await refreshSessions(false);
+      await loadMessages();
+    }
+
+    async function renameSession(){
+      if(!currentSessionId) return alert('No session selected.');
+      const cur = currentSessions.find(s=>s.id===currentSessionId);
+      const title = prompt('Rename conversation:', (cur && cur.title) || 'My Chat');
+      if(!title) return;
+      await api(`/api/sessions/${currentSessionId}`, { method:'PATCH', body: JSON.stringify({ title }) });
+      await refreshSessions(false);
+    }
+
+    async function deleteSession(){
+      if(!currentSessionId) return alert('No session selected.');
+      const cur = currentSessions.find(s=>s.id===currentSessionId);
+      if(!confirm(`Delete conversation "${(cur && cur.title) || 'this chat'}"? This cannot be undone.`)) return;
+      await api(`/api/sessions/${currentSessionId}`, { method:'DELETE' });
+      currentSessionId = null;
+      await refreshSessions();
+      await loadMessages(); // clears view if none
+    }
+
+    async function loadMessages(){
+      if(!currentSessionId){ renderBuffer=[]; renderAll(); return; }
+      const data = await api(`/api/sessions/${currentSessionId}/messages`);
+      renderBuffer = data.map(m => ({ user: m.role==='user' ? (nameEl.value||'You') : 'Assistant', text: m.text, ts: typeof m.ts==='number'? m.ts : Date.now() }));
+      renderAll();
+    }
+
+    // ===== Auth (popup with redirect fallback) =====
+    function setSignedInUI(on,email=''){
+      $$('#signInBtn').style.display=on?'none':''; $$('#signOutBtn').style.display=on?'':'';
+      dotEl.classList.toggle('on', on); dotEl.title = on ? `Signed in as ${email}` : 'Signed out';
+    }
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    firebase.auth().getRedirectResult().catch(err => console.warn('[auth] getRedirectResult:', err.code, err.message));
+
+    firebase.auth().onAuthStateChanged(async (user) => {
+      try{
+        if(!user){ idToken=null; currentSessionId=null; currentSessions=[]; setSignedInUI(false); renderSessions(); renderBuffer=[]; renderAll(); return; }
+        setSignedInUI(true, user.email||'');
+        await getFreshToken();
+        await ensureDefaultSession();
+        await loadMessages();
+      }catch(err){
+        console.error('[auth/init]', err);
+        alert('Failed to initialize: '+err.message);
+      }
+    });
+
+    $$('#signInBtn').onclick = async () => {
+      try{ await firebase.auth().signInWithPopup(provider); }
+      catch(err){
+        if(err.code==='auth/popup-blocked' || err.code==='auth/operation-not-supported-in-this-environment'){
+          await firebase.auth().signInWithRedirect(provider);
+        }else{
+          alert('Sign-in error: ' + err.code);
+        }
+      }
+    };
+    $$('#signOutBtn').onclick = () => firebase.auth().signOut();
+
+    // ===== Send message =====
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = textEl.value.trim(); if(!text) return;
+
+      const mine = { user: nameEl.value.trim()||'You', text, ts: Date.now() };
+      renderBuffer.push(mine); appendMessage(mine);
+      textEl.value=''; textEl.focus();
+
+      try{
+        if(!idToken) throw new Error('Please sign in first.');
+        if(!currentSessionId) await ensureDefaultSession();
+
+        const res = await api(`/api/sessions/${currentSessionId}/messages`, {
+          method:'POST',
+          body: JSON.stringify({ text })
+        });
+
+        const ai = res.assistant;
+        const theirs = { user:'Assistant', text: ai.text, ts: typeof ai.ts==='number'? ai.ts : Date.now() };
+        renderBuffer.push(theirs); appendMessage(theirs);
+        // refresh list ordering by updatedAt
+        await refreshSessions(false);
+      }catch(err){
+        const sys = { user:'System', text:`⚠️ ${err.message}`, ts: Date.now() };
+        renderBuffer.push(sys); appendMessage(sys);
+      }
+    });
+
+    // Buttons
+    newBtn.onclick = () => createSession();
+    deleteBtn.onclick = () => deleteSession();
+    renameBtn.onclick = () => renameSession();
+
+    // Misc UI
+    nameEl.addEventListener('change', ()=>{ nameEl.value = nameEl.value.trim().slice(0,32)||'You'; });
+
+    // First paint
+    appendMessage({ user:'System', text:'Welcome! Click “Sign in” to sync with the server.', ts: Date.now() });
+    // Allow Enter to send, Shift+Enter to add a newline
+  textEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();          // Stop newline
+      formEl.requestSubmit();      // Triggers <form> submit event
+    }
+  });
+
+  </script>
+</body>
+</html>
