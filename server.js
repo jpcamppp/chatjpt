@@ -29,7 +29,7 @@ app.use(express.json());
 
 // Static hosting
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/', (_req, res) => res.sendFile('index.html')));
 
 // Health
 app.get('/health', (_req, res) => res.json({ ok: true }));
